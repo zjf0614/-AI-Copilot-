@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NexusFlow Console</title>
+<style>
+:root{--bg:#0d1117;--fg:#c9d1d9;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--border:#30363d;--card:#161b22;--hover:#1c2129}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--fg);min-height:100vh}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100}
+header h1{font-size:20px;color:var(--accent)}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.status-dot.online{background:var(--green)}
+.status-dot.offline{background:var(--red)}
+main{max-width:1400px;margin:0 auto;padding:24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;transition:all .2s}
+.card:hover{background:var(--hover);border-color:var(--accent)}
+.card h3{font-size:14px;color:var(--accent);margin-bottom:8px}
+.card .port{font-size:12px;color:#8b949e}
+.card .status{font-size:13px;margin-top:8px;display:flex;align-items:center}
+.card a{color:var(--accent);text-decoration:none;font-size:12px;display:inline-block;margin-top:8px}
+.card a:hover{text-decoration:underline}
+.section-title{font-size:16px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.quick-actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+.action-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px}
+.action-card h4{font-size:14px;margin-bottom:12px}
+.action-card button{background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;margin-right:8px;margin-bottom:8px}
+.action-card button:hover{opacity:.85}
+.action-card pre{background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:12px;font-size:12px;overflow-x:auto;max-height:200px;overflow-y:auto;margin-top:12px;white-space:pre-wrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:32px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center}
+.stat-card .value{font-size:28px;font-weight:bold;color:var(--accent)}
+.stat-card .label{font-size:12px;color:#8b949e;margin-top:4px}
+.token-input{width:100%;background:#0d1117;border:1px solid var(--border);color:var(--fg);padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:8px;font-family:monospace}
+</style>
+</head>
+<body>
+<header>
+<h1>NexusFlow Dev Console</h1>
+<div style="font-size:13px;color:#8b949e">
+<span id="svcCount">0</span> services | <span id="svcOnline">0</span> online
+</div>
+</header>
+<main>
+<div class="stats" id="stats"></div>
+<div class="section-title">Services</div>
+<div class="grid" id="services"></div>
+<div class="section-title">Quick Actions</div>
+<div class="quick-actions">
+<div class="action-card">
+<h4>Register User</h4>
+<input class="token-input" id="regEmail" placeholder="email@demo.com">
+<input class="token-input" id="regPass" placeholder="password" type="password">
+<input class="token-input" id="regName" placeholder="display name">
+<button onclick="register()">Register</button>
+<pre id="regResult"></pre>
+</div>
+<div class="action-card">
+<h4>Login</h4>
+<input class="token-input" id="loginEmail" placeholder="admin@demo.com" value="admin@demo.com">
+<input class="token-input" id="loginPass" placeholder="password" type="password" value="Admin123!">
+<input class="token-input" id="loginSlug" placeholder="workspace slug" value="demo">
+<button onclick="login()">Login</button>
+<pre id="loginResult"></pre>
+</div>
+<div class="action-card">
+<h4>API Explorer</h4>
+<input class="token-input" id="apiPath" placeholder="/api/v1/workspaces/demo/users" value="/api/v1/workspaces/demo/users">
+<button onclick="apiGet()">GET</button>
+<button onclick="apiPost()">POST</button>
+<pre id="apiResult"></pre>
+</div>
+<div class="action-card">
+<h4>WebSocket Test</h4>
+<input class="token-input" id="wsToken" placeholder="JWT token">
+<button onclick="wsConnect()">Connect</button>
+<button onclick="wsSend()">Send Ping</button>
+<pre id="wsResult"></pre>
+</div>
+</div>
+</main>
+<script>
+const SERVICES = [
+{name:'BFF Gateway',port:3000,url:'http://localhost:3000',docs:'/docs'},
+{name:'Auth Service',port:3001,url:'http://localhost:3001',docs:'/docs'},
+{name:'Org Service',port:3002,url:'http://localhost:3002',docs:'/docs'},
+{name:'Chat Service',port:3003,url:'http://localhost:3003',docs:'/docs',ws:'ws://localhost:3003/ws'},
+{name:'Doc Service',port:3004,url:'http://localhost:3004',docs:'/docs'},
+{name:'Project Service',port:3005,url:'http://localhost:3005',docs:'/docs'},
+{name:'Workflow Service',port:3006,url:'http://localhost:3006',docs:'/docs'},
+{name:'Notification Service',port:3007,url:'http://localhost:3007',docs:'/docs'},
+{name:'AI Copilot',port:3008,url:'http://localhost:3008',docs:'/docs'},
+{name:'Analytics Service',port:3009,url:'http://localhost:3009',docs:'/docs'},
+];
+let TOKEN = '';
+let WS = null;
+
+async function checkAll(){
+const grid=document.getElementById('services');grid.innerHTML='';
+let online=0;
+for(const s of SERVICES){
+try{const r=await fetch(s.url+'/health');const j=await r.json();online++;
+grid.innerHTML+=`<div class="card"><h3>${s.name}</h3><div class="port">Port ${s.port}</div><div class="status"><span class="status-dot online"></span>${j.service||'online'}</div><a href="${s.url}${s.docs}" target="_blank">Open Docs</a>${s.ws?` | <a href="#" onclick="wsConnect('${s.ws}')">WS</a>`:''}</div>`;
+}catch(e){grid.innerHTML+=`<div class="card"><h3>${s.name}</h3><div class="port">Port ${s.port}</div><div class="status"><span class="status-dot offline"></span>Offline</div></div>`;}
+}
+document.getElementById('svcCount').textContent=SERVICES.length;
+document.getElementById('svcOnline').textContent=online;
+document.getElementById('stats').innerHTML=`
+<div class="stat-card"><div class="value">${SERVICES.length}</div><div class="label">Total Services</div></div>
+<div class="stat-card"><div class="value">${online}</div><div class="label">Online</div></div>
+<div class="stat-card"><div class="value">154</div><div class="label">TS Files</div></div>
+<div class="stat-card"><div class="value">9.6K</div><div class="label">Lines of Code</div></div>
+<div class="stat-card"><div class="value">60+</div><div class="label">DB Tables</div></div>
+<div class="stat-card"><div class="value">~250</div><div class="label">API Endpoints</div></div>
+`;
+}
+
+async function register(){
+const r=document.getElementById('regResult');
+try{
+const res=await fetch('/api/v1/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('regEmail').value,password:document.getElementById('regPass').value,displayName:document.getElementById('regName').value,workspaceSlug:'demo'+Date.now(),workspaceName:'Demo Workspace'})});
+const j=await res.json();r.textContent=JSON.stringify(j,null,2);
+if(j.data?.accessToken) TOKEN=j.data.accessToken;
+}catch(e){r.textContent='Error: '+e.message;}
+}
+
+async function login(){
+const r=document.getElementById('loginResult');
+try{
+const res=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:document.getElementById('loginEmail').value,password:document.getElementById('loginPass').value,workspaceSlug:document.getElementById('loginSlug').value})});
+const j=await res.json();r.textContent=JSON.stringify(j,null,2);
+if(j.data?.accessToken) TOKEN=j.data.accessToken;
+}catch(e){r.textContent='Error: '+e.message;}
+}
+
+async function apiGet(){
+const r=document.getElementById('apiResult');
+try{
+const h={};if(TOKEN)h['Authorization']='Bearer '+TOKEN;
+const res=await fetch(document.getElementById('apiPath').value,{headers:h});
+const j=await res.json();r.textContent=JSON.stringify(j,null,2);
+}catch(e){r.textContent='Error: '+e.message;}
+}
+
+async function apiPost(){
+const r=document.getElementById('apiResult');
+try{
+const h={'Content-Type':'application/json'};if(TOKEN)h['Authorization']='Bearer '+TOKEN;
+const res=await fetch(document.getElementById('apiPath').value,{method:'POST',headers:h,body:'{}'});
+const j=await res.json();r.textContent=JSON.stringify(j,null,2);
+}catch(e){r.textContent='Error: '+e.message;}
+}
+
+function wsConnect(url){
+const r=document.getElementById('wsResult');
+try{
+const baseUrl=url||'ws://localhost:3003/ws';
+const token=document.getElementById('wsToken').value||TOKEN;
+WS=new WebSocket(baseUrl+'?token='+token);
+WS.onopen=()=>{r.textContent='Connected to '+baseUrl};
+WS.onmessage=(e)=>{r.textContent='Received: '+e.data};
+WS.onerror=()=>{r.textContent='WebSocket error'};
+WS.onclose=()=>{r.textContent='WebSocket closed'};
+}catch(e){r.textContent='Error: '+e.message;}
+}
+
+function wsSend(){if(WS){WS.send(JSON.stringify({type:'presence.heartbeat',payload:{}}));document.getElementById('wsResult').textContent='Sent heartbeat';}}
+
+checkAll();setInterval(checkAll,30000);
+</script></body></html>

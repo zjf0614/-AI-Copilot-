@@ -1,0 +1,55 @@
+{
+  "name": "nexusflow",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "packages/database",
+    "packages/auth-service",
+    "packages/org-service",
+    "packages/chat-service",
+    "packages/doc-service",
+    "packages/project-service",
+    "packages/workflow-service",
+    "packages/notification-service",
+    "packages/ai-service",
+    "packages/analytics-service",
+    "packages/frontend",
+    "packages/bff"
+  ],
+  "scripts": {
+    "dev": "npm run dev:up && concurrently \"npm run dev:auth\" \"npm run dev:org\" \"npm run dev:chat\" \"npm run dev:doc\" \"npm run dev:project\" \"npm run dev:bff\"",
+    "dev:chat": "npm -w packages/chat-service run dev",
+    "dev:doc": "npm -w packages/doc-service run dev",
+    "dev:project": "npm -w packages/project-service run dev",
+    "dev:up": "docker-compose up -d postgres redis",
+    "dev:down": "docker-compose down",
+    "dev:auth": "npm -w packages/auth-service run dev",
+    "dev:org": "npm -w packages/org-service run dev",
+    "dev:bff": "npm -w packages/bff run dev",
+    "db:migrate": "npm -w packages/database run migrate",
+    "db:seed": "npm -w packages/database run seed",
+    "db:studio": "npm -w packages/database run studio",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"packages/**/*.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.18.1",
+    "concurrently": "^9.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@fastify/static": "^9.1.3",
+    "dotenv": "^17.4.2"
+  }
+}

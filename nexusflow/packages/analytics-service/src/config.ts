@@ -1,0 +1,1 @@
+export const config = { PORT: parseInt(process.env.ANALYTICS_PORT ?? '3009', 10), HOST: '0.0.0.0', JWT_PUBLIC_KEY: 'development-public-key-change-in-production', JWT_ISSUER: 'nexusflow', CORS_ORIGINS: (process.env.CORS_ORIGINS ?? 'http://localhost:5173').split(','), LOG_LEVEL: 'info', NODE_ENV: 'development' } as const;
